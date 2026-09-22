@@ -1,0 +1,33 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.*
+
+# next.js / build
+.next/
+out/
+build/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# env files — never commit real values
+.env*
+!.env.example
+
+# your private data and local media — never commit
+.data/
+data/
+*.heic
+*.HEIC
+
+# generated prisma client
+src/generated/
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
+.pnpm-debug.log*
+.vercel
+.obsidian/

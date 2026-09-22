@@ -1,0 +1,805 @@
+// Capture Gap Study Console — data model
+// BUILD-SPEC §3 + PLAN.md §5 amendments (2026-08-10, owner-approved).
+// Invariant-relevant columns are commented with the rule they serve.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum MealType {
+  breakfast
+  lunch
+  dinner
+  snack
+}
+
+enum LocationType {
+  home
+  restaurant
+  host
+  travel
+  other
+}
+
+enum GtTier {
+  pending
+  gold
+  silver
+  unrated
+}
+
+enum Suppression {
+  none
+  skipped
+  delayed
+  modified
+}
+
+// Vantage (intake v2, 2026-09-16): the three cameras of the study. `fixed`
+// became `tripod`; the manual text/audio arm left the study (REBUILD-SPEC §7).
+enum Surface {
+  phone
+  glasses
+  tripod
+}
+
+// Ground-truth item basis (METRICS.md "Ground truth per item"):
+// weighed = read off the scale; estimated = household unit or eyeballed;
+// converted = weighed in one state, recorded as served (dry oats → cooked).
+enum GtBasis {
+  weighed
+  estimated
+  converted
+}
+
+// Importance tag per TAG-GUIDE.md: core 1.0 · secondary 0.5 · garnish 0.1 ·
+// spice 0.05 · ignore 0 (dropped on both sides at scoring).
+enum GtTag {
+  core
+  secondary
+  garnish
+  spice
+  ignore
+}
+
+enum DecompositionSource {
+  pipeline
+  gt
+  silver_assist
+}
+
+// Run conditions (REBUILD-SPEC §1/§4.1): what the interpretation call receives.
+// context_only has no vantage (Decomposition.vantage NULL) and runs once per scene.
+enum Condition {
+  image_only
+  image_context
+  context_only
+}
+
+enum RunStatus {
+  created
+  running
+  done
+  failed
+}
+
+// Which side of the comparison a Level 3 classification was run on.
+enum ClassificationSide {
+  truth
+  estimate
+}
+
+// Tier derivation is protocol-owned: weighed_components -> gold;
+// weighed_meal_described -> silver (meal_weight_verified);
+// attested_description -> silver; insufficient basis -> unrated.
+enum GtMethod {
+  weighed_components
+  weighed_meal_described
+  attested_description
+}
+
+enum Band {
+  low
+  moderate
+  high
+}
+
+enum ProfileCode {
+  P1
+  P2
+  P3
+}
+
+enum Arm {
+  A
+  B
+  C
+  D
+  E
+}
+
+enum InputKind {
+  estimated
+  gt
+}
+
+enum Rater {
+  self
+  ext1
+  ext2
+}
+
+enum FieldNoteTag {
+  platform
+  social
+  build
+  meta_rollout
+  other
+}
+
+enum CustomFoodOrigin {
+  llm_drafted
+  manual
+}
+
+enum Runner {
+  pipeline
+  judge
+  silver_assist
+  trigger
+  insights
+  transcribe
+  gt_assist
+  custom_food_draft
+  gt_structure
+  interpret
+  matcher
+  classifier
+  distill
+  router
+}
+
+enum CallStatus {
+  ok
+  error
+  retry
+}
+
+model Meal {
+  id                     String       @id @default(uuid())
+  eatenAt                DateTime // tz-aware; retroactive/backdated entry is first-class
+  mealType               MealType? // owner organizes captures by meal slot
+  locationType           LocationType @default(home)
+  gtTier                 GtTier       @default(pending)
+  forgot                 Boolean      @default(false)
+  suppression            Suppression  @default(none)
+  suppressionSetting     String?
+  suppressionCompanions  String?
+  suppressionReason      String?
+  notes                  String?
+  // Leftovers eaten twice: independent attestation, optional nutrient-mapping reuse.
+  sameFoodAsMealId       String?
+  sameFoodAsMeal         Meal?        @relation("SameFood", fields: [sameFoodAsMealId], references: [id])
+  sameFoodMeals          Meal[]       @relation("SameFood")
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+  artifacts              Artifact[]
+  decompositions         Decomposition[]
+  scenes                 PhotoScene[]
+
+  @@index([eatenAt])
+}
+
+// Intake v2 (REBUILD-SPEC §1): scene k of a meal — the same moment captured
+// by up to three vantages. `index` is the photo number in the notes
+// ("Photo 2:") and in the filename (`-img2-`). Validity (METRICS.md "Scene
+// validity") is recomputed by the importers: valid iff every vantage has a
+// non-excluded capture AND `notes` is present AND `sameSceneConfirmed`.
+// exclusionReason: missing_vantage | different_plates | no_notes | manual
+// (manual = a vantage guess or owner exclusion still needs a human decision).
+model PhotoScene {
+  id                 String     @id @default(uuid())
+  mealId             String
+  meal               Meal       @relation(fields: [mealId], references: [id])
+  index              Int
+  valid              Boolean    @default(false)
+  exclusionReason    String?
+  sameSceneConfirmed Boolean    @default(false)
+  // Verbatim prose for this photo from the owner's notes — never rewritten.
+  notes              String?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  artifacts          Artifact[]
+  gtItems            GtItem[]
+  decompositions     Decomposition[]
+  matchTables        MatchTable[]
+  classifications    Classification[]
+  scoreCells         ScoreCell[]
+
+  @@unique([mealId, index])
+}
+
+// A Run is a saved configuration snapshot (REBUILD-SPEC §1): scene set,
+// conditions, model roster {family, tier, id}, prompt block hashes, matcher +
+// classifier pins, corpus/alias versions. Results are always shown per run.
+// config shape: src/lib/runmatrix.ts `RunConfig`. Self-consistency of the
+// classifier (--consistency) is stored under config.consistency.
+model Run {
+  id              String           @id @default(uuid())
+  label           String
+  createdAt       DateTime         @default(now())
+  config          Json
+  status          RunStatus        @default(created)
+  decompositions  Decomposition[]
+  matchTables     MatchTable[]
+  classifications Classification[]
+  scoreCells      ScoreCell[]
+  itemErrors      RunItemError[]
+}
+
+// Last failure per work item of a run (kind + cell key) so a failed cell is
+// visible in the progress grid and retryable; deleted when the item succeeds.
+model RunItemError {
+  id        String   @id @default(uuid())
+  runId     String
+  run       Run      @relation(fields: [runId], references: [id])
+  kind      String
+  key       String
+  error     String
+  createdAt DateTime @default(now())
+
+  @@unique([runId, kind, key])
+}
+
+// Intake v2 canonical ground truth: one row per item of a scene, tagged per
+// TAG-GUIDE.md. The v1 GT decomposition path (Decomposition.source = gt) is
+// untouched; GtItem is the form the v2 scorer reads.
+model GtItem {
+  id             String     @id @default(uuid())
+  sceneId        String
+  scene          PhotoScene @relation(fields: [sceneId], references: [id])
+  dish           String // plate / dish label the item belongs to
+  name           String
+  grams          Float? // as-served; required for core + secondary (rule 10)
+  basis          GtBasis? // null only when grams is null (garnish / spice / ignore)
+  tag            GtTag
+  state          String? // cooked | dry | raw — carried into the nutrient lookup
+  componentsNote String? // composite dishes: named components, not separately tagged
+  // METRICS "hidden-ingredient recall": true when the item cannot be seen in a photo of the served plate
+  // (under or inside other food, absorbed cooking fat, dissolved sweetener, seasoning). Set by the owner.
+  hidden         Boolean    @default(false)
+  order          Int
+  createdAt      DateTime   @default(now())
+
+  @@index([sceneId])
+}
+
+model Artifact {
+  id                     String    @id @default(uuid())
+  mealId                 String
+  meal                   Meal      @relation(fields: [mealId], references: [id])
+  surface                Surface
+  // Intake v2 fields. `vantage` is the v2 name of `surface` (written together
+  // by the importer; `surface` stays until the v1 routes/UI are replaced).
+  vantage                Surface?
+  // true when the importer could only guess the vantage (iPhone photos from
+  // _unsorted are phone-or-tripod) — the scene carries exclusionReason=manual
+  // until the UI confirms.
+  vantageGuessed         Boolean   @default(false)
+  sceneId                String?
+  scene                  PhotoScene? @relation(fields: [sceneId], references: [id])
+  // Per-file idempotency: path relative to VANTAGE_DATA_DIR/captures + content hash.
+  sourcePath             String?   @unique
+  sha256                 String?
+  blobUrl                String?
+  exifTakenAt            DateTime? // unverified convenience — never load-bearing
+  uploadedAt             DateTime  @default(now())
+  transcript             String?
+  audioDurationSecs      Float?
+  typingSecs             Float?
+  captureTimeSampleSecs  Float? // RQ1 stopwatch samples (~2 meals/day)
+  // Hygiene invariant 4: excluded artifacts never appear in any export bundle.
+  excludeFromExport      Boolean   @default(false)
+  // Menu photos / reminders: attached to the meal, never pipeline-scored,
+  // never counted as a capture artifact.
+  isReference            Boolean   @default(false)
+  decompositions         Decomposition[]
+
+  @@index([mealId])
+  @@index([sceneId])
+}
+
+model Decomposition {
+  id              String              @id @default(uuid())
+  mealId          String
+  meal            Meal                @relation(fields: [mealId], references: [id])
+  // Pipeline rows: ONE per (meal, surface) — the unit of comparison is the
+  // capture event per surface, so ALL of a surface's photos feed one
+  // interpretation call. `surface` set on pipeline rows; artifactId retained
+  // only for legacy single-artifact rows. GT/silver rows: both NULL.
+  surface         Surface?
+  artifactId      String?
+  artifact        Artifact?           @relation(fields: [artifactId], references: [id])
+  source          DecompositionSource
+  // Exploratory engine-comparison rows (protocol: secondary, labeled): NULL =
+  // the frozen primary pipeline; else the exploratory engine's model ID.
+  // Engine rows are EXCLUDED from GT-lock counting, trigger scoring, insights,
+  // and the primary analysis columns.
+  engine          String?
+  payload         Json // §4 schema; GT ingredients carry grams + grams_basis
+  modelId         String? // frozen-config stamp
+  promptVersion   String? // frozen-config stamp
+  // ---- v2 result cell (runs_and_conditions, 2026-09-17) ----------------------
+  // ONE row per (run, scene, vantage, condition, model): the interpretation of
+  // one photo scene from one vantage under one condition. vantage is NULL for
+  // context_only. promptBlockHashes = sha256 per SENT block 1–6 (null when a
+  // block was empty); contextUsed = {cardsRetrieved, hit, ...} retrieval
+  // provenance; llmCallId = the ledger row (cost / latency for the export).
+  runId             String?
+  run               Run?        @relation(fields: [runId], references: [id])
+  sceneId           String?
+  scene             PhotoScene? @relation(fields: [sceneId], references: [id])
+  vantage           Surface?
+  condition         Condition?
+  promptBlockHashes Json?
+  contextUsed       Json?
+  llmCallId         String?
+  // Hygiene invariant 1: GT entry disabled until all pipeline rows locked. One-way.
+  lockedAt        DateTime?
+  // GT-only fields
+  gtMethod        GtMethod?
+  plateTotalGrams Float? // owner weighs the plate each time; powers silver mass check
+  // The owner's raw attestation prose. Protocol: for silver tier the
+  // attestation — not the model — is load-bearing; it must be preserved.
+  attestation     String?
+  gtAmendedAt     DateTime?
+  createdAt       DateTime            @default(now())
+  corrections     GtCorrection[]
+  nutrientCalcs   NutrientCalc[]
+  judgeScoresAsGt   JudgeScore[]      @relation("GtSide")
+  judgeScoresAsEval JudgeScore[]      @relation("EvalSide")
+  triggerResults  TriggerResult[]
+  matchTables     MatchTable[]
+  classifications Classification[]
+
+  @@unique([runId, sceneId, vantage, condition, modelId, source])
+  @@index([mealId])
+  @@index([runId, sceneId])
+}
+
+// Match table per result cell (METRICS.md "Match table per photo"): the blind
+// matcher's pairing of truth items (GtItem ids) with predicted items
+// (Decomposition.payload.predItems ids). rows / invented / droppedDrinks are
+// the scoring MatchTable shape (src/lib/scoring/types.ts). overrides are
+// the owner's on-screen fixes, applied on read (src/runners/match.ts
+// readMatchTable) — never merged into the model's rows; override rate is
+// published from overrides.length.
+model MatchTable {
+  id              String        @id @default(uuid())
+  runId           String
+  run             Run           @relation(fields: [runId], references: [id])
+  sceneId         String
+  scene           PhotoScene    @relation(fields: [sceneId], references: [id])
+  decompositionId String        @unique
+  decomposition   Decomposition @relation(fields: [decompositionId], references: [id])
+  rows            Json
+  invented        Json
+  droppedDrinks   Json
+  overrides       Json
+  matcherModelId  String
+  version         String
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([runId, sceneId])
+}
+
+// Level 3 classifier output (classify.v1) for one ingredient list: the truth
+// side once per (run, scene); the estimate side once per decomposition.
+model Classification {
+  id                String             @id @default(uuid())
+  runId             String
+  run               Run                @relation(fields: [runId], references: [id])
+  sceneId           String
+  scene             PhotoScene         @relation(fields: [sceneId], references: [id])
+  side              ClassificationSide
+  decompositionId   String?
+  decomposition     Decomposition?     @relation(fields: [decompositionId], references: [id])
+  payload           Json
+  classifierModelId String
+  createdAt         DateTime           @default(now())
+
+  @@unique([runId, sceneId, side, decompositionId])
+  @@index([runId, sceneId])
+}
+
+// One scored result cell (scene × vantage × condition × model) — Level 1
+// (Level1Result), Level 2 ({truth, est, errors}), Level 3 (Level3Result).
+// vantage NULL for context_only.
+model ScoreCell {
+  id        String     @id @default(uuid())
+  runId     String
+  run       Run        @relation(fields: [runId], references: [id])
+  sceneId   String
+  scene     PhotoScene @relation(fields: [sceneId], references: [id])
+  vantage   Surface?
+  condition Condition
+  modelId   String
+  level1    Json
+  level2    Json
+  level3    Json
+  // Routine vs novel (CORPUS.md §5), computed at score time from the truth
+  // against Run.config.contextVersionId; null when the run has no context
+  // version (scorecell_routine 2026-09-17). Property of the scene — identical
+  // across the scene's cells.
+  routine   Boolean?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([runId, sceneId, vantage, condition, modelId])
+  @@index([runId, sceneId])
+}
+
+// Append-only GT amendment trail (owner ruling #7): mis-weigh fixes are
+// possible and visible; never silent overwrites.
+model GtCorrection {
+  id              String        @id @default(uuid())
+  decompositionId String
+  decomposition   Decomposition @relation(fields: [decompositionId], references: [id])
+  ts              DateTime      @default(now())
+  note            String
+  payloadBefore   Json
+}
+
+model NutrientCalc {
+  id              String        @id @default(uuid())
+  decompositionId String
+  decomposition   Decomposition @relation(fields: [decompositionId], references: [id])
+  kcal            Float
+  proteinG        Float
+  carbsG          Float
+  fatG            Float
+  // [{ingredientPath, fdcId?, customFoodId?, nutrientSource: fdc|custom_food|llm_estimate|manual,
+  //   per100g, grams, kcal, ...}] — per-ingredient source tag is a measurement-integrity
+  // requirement (§5.2): analysis reports with/without LLM-sourced rows.
+  fdcMappings     Json
+  dbVersion       String
+  manualOverrides Json?
+  createdAt       DateTime      @default(now())
+
+  @@index([decompositionId])
+}
+
+model JudgeScore {
+  id                  String        @id @default(uuid())
+  gtDecompositionId   String
+  gtDecomposition     Decomposition @relation("GtSide", fields: [gtDecompositionId], references: [id])
+  evalDecompositionId String
+  evalDecomposition   Decomposition @relation("EvalSide", fields: [evalDecompositionId], references: [id])
+  guidelineVersion    String // frozen-config stamp
+  judgeModelId        String // family B — must differ from pipeline family
+  componentRecall     Float // 0..1
+  componentPrecision  Float // 0..1
+  quantityScore       Float
+  preparationScore    Float
+  overall0100         Float
+  rationale           String
+  // Human-agreement subset (protocol: 15–20 meals, judge validity bar)
+  humanOverall0100    Float?
+  humanNotes          String?
+  createdAt           DateTime      @default(now())
+}
+
+model TriggerResult {
+  id              String           @id @default(uuid())
+  decompositionId String
+  decomposition   Decomposition    @relation(fields: [decompositionId], references: [id])
+  profileId       String
+  profile         ConditionProfile @relation(fields: [profileId], references: [id])
+  overallScore    Float // RAW 0–10 from engine (fractional allowed) — THE measurement.
+  // Stored unrounded: band here AND every downstream derivation (flat export)
+  // must come from this same raw value via bands.ts (QA P0: rounding drift
+  // manufactured phantom flips at band boundaries).
+  // Band derived at write time using PROTOCOL boundaries (1–3/4–7/8–10), never
+  // the production prompt's internal >6=High boundary. Flips computed in analysis.
+  band            Band
+  payload         Json // verbatim engine output
+  engineVersion   String
+  createdAt       DateTime         @default(now())
+
+  @@index([decompositionId])
+}
+
+// Measurement artifacts: owner-approved, version-pinned, immutable mid-study.
+model ConditionProfile {
+  id             String          @id @default(uuid())
+  code           ProfileCode
+  name           String
+  version        Int
+  docRef         String // path under /config/profiles; P1 content stays out of the repo
+  approvedAt     DateTime?
+  active         Boolean         @default(false)
+  triggerResults TriggerResult[]
+  insights       Insight[]
+
+  @@unique([code, version])
+}
+
+model Insight {
+  id            String         @id @default(uuid())
+  date          DateTime       @db.Date
+  arm           Arm
+  inputKind     InputKind
+  // Persona the insight is written for (owner amendment 2026-08-15: insights
+  // run per ACTIVE profile, not P1-only). Nullable for pre-amendment rows.
+  profileId     String?
+  profile       ConditionProfile? @relation(fields: [profileId], references: [id])
+  text          String
+  modelId       String
+  promptVersion String
+  // Hygiene invariant 2: scoring UI shuffles by this key with arm/inputKind hidden.
+  shuffleKey    String         @default(uuid())
+  createdAt     DateTime       @default(now())
+  scores        InsightScore[]
+
+  // one insight per (day, arm, variant, persona) — duplicates would flow
+  // straight into the blind-scoring queue (QA P0-3)
+  @@unique([date, arm, inputKind, profileId])
+}
+
+model InsightScore {
+  id          String    @id @default(uuid())
+  insightId   String
+  insight     Insight   @relation(fields: [insightId], references: [id])
+  rater       Rater
+  rubric      Json // 3 items 1–5 + comment
+  scoredBlind Boolean
+  revealedAt  DateTime? // reveal recorded per rater row
+  createdAt   DateTime  @default(now())
+
+  @@unique([insightId, rater])
+}
+
+model LatencyTrial {
+  id          String   @id @default(uuid())
+  surface     Surface
+  trialNo     Int
+  capturedAt  DateTime
+  availableAt DateTime
+  conditions  String
+}
+
+model FieldNote {
+  id   String       @id @default(uuid())
+  ts   DateTime     @default(now())
+  tag  FieldNoteTag
+  text String
+}
+
+model RaterToken {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  rater     Rater
+  expiresAt DateTime
+}
+
+// Fixed, auditable pseudo-database entries for foods the nutrient database does not carry.
+// Drafted once by family C with reasoning shown, owner-approved, reused study-wide.
+model CustomFood {
+  id            String           @id @default(uuid())
+  name          String
+  aliases       String[]
+  per100g       Json // {kcal, protein_g, carbs_g, fat_g}
+  origin        CustomFoodOrigin
+  draftReasoning String?
+  approvedAt    DateTime?
+  approvalNotes String?
+  version       Int              @default(1)
+  createdAt     DateTime         @default(now())
+  fdcAliases    FdcAlias[]
+}
+
+// Shared identity layer: BOTH GT and pipeline nutrient calc resolve ingredient
+// names here, so two names for the same food map to one identity (risk R4).
+model FdcAlias {
+  id             String      @id @default(uuid())
+  normalizedName String      @unique
+  fdcId          Int?
+  customFoodId   String?
+  customFood     CustomFood? @relation(fields: [customFoodId], references: [id])
+  per100gCache   Json?
+  pickedAt       DateTime    @default(now())
+}
+
+// FDC search proxy cache
+model FdcSearchCache {
+  id        String   @id @default(uuid())
+  query     String   @unique
+  results   Json
+  fetchedAt DateTime @default(now())
+}
+
+// §5B: every LLM call writes a row BEFORE outputs are trusted. Study data
+// (per-surface cost/latency are RQ1 findings) + the audit trail.
+model LlmCall {
+  id            String     @id @default(uuid())
+  traceId       String?
+  runId         String?
+  runner        Runner
+  modelId       String
+  promptVersion String?
+  subjectRef    String? // e.g. meal/decomposition id
+  inputRef      String?
+  outputRef     String?
+  tokensIn      Int?
+  tokensOut     Int?
+  latencyMs     Int?
+  costUsdEst    Float?
+  status        CallStatus
+  error         String?
+  createdAt     DateTime   @default(now())
+
+  @@index([runner, createdAt])
+  @@index([subjectRef])
+}
+
+// ---------------------------------------------------------------------------
+// Corpus + context layer (docs/CORPUS.md, REBUILD-SPEC §3.2 / §4.3; corpus_v1
+// 2026-09-17). Append-only: nothing above this line changed except the two
+// Runner values `distill` / `router` (additive enum values).
+// ---------------------------------------------------------------------------
+
+// Tier of a corpus meal: corrected (the owner agreed / fixed on the Corpus screen),
+// confirmed (the source app's is_confirmed flag),
+// unconfirmed (everything as loaded). Distillation weights 1.0 / 0.7 / 0.5.
+enum CorpusTier {
+  corrected
+  confirmed
+  unconfirmed
+}
+
+// Where a CorpusIngredient.gramsEst came from: app_estimate = the app already
+// logged grams (or ml, ≈ g); unit_table = household unit × src/lib/units.ts;
+// none = unconvertible (gramsEst NULL).
+enum GramsSource {
+  app_estimate
+  unit_table
+  none
+}
+
+// Portion class per dish (CORPUS.md §2): prefilled from the app's serving_size
+// enum (SNACK/SMALL → small, STANDARD → usual, LARGE/EXTRA_LARGE → large).
+enum PortionClass {
+  small
+  usual
+  large
+}
+
+// One historical logged meal (CORPUS.md §1). Idempotent by sourceMealId; the
+// loader refuses any localDate on or after CORPUS_CUTOFF_EXCLUSIVE (the first test day; enforced twice).
+model CorpusMeal {
+  id                  String            @id @default(uuid())
+  sourceMealId        String            @unique
+  localDate           DateTime          @db.Date
+  localTime           String // HH:MM in the user's timezone
+  slot                MealType
+  name                String
+  description         String?
+  servingSize         String? // SNACK | SMALL | STANDARD | LARGE | EXTRA_LARGE (verbatim)
+  portionClassPrefill PortionClass
+  imageFile           String? // images/<mealId>.<ext> once the image step ran
+  imageSha256         String?
+  tier                CorpusTier        @default(unconfirmed)
+  excluded            Boolean           @default(false)
+  loadedAt            DateTime          @default(now())
+  dishes              CorpusDish[]
+  annotations         CorpusAnnotation[]
+
+  @@index([localDate])
+}
+
+model CorpusDish {
+  id          String             @id @default(uuid())
+  mealId      String
+  meal        CorpusMeal         @relation(fields: [mealId], references: [id])
+  name        String
+  description String?
+  preparation String?
+  servingSize String?
+  order       Int
+  ingredients CorpusIngredient[]
+  annotations CorpusAnnotation[]
+
+  @@index([mealId])
+}
+
+model CorpusIngredient {
+  id          String      @id @default(uuid())
+  dishId      String
+  dish        CorpusDish  @relation(fields: [dishId], references: [id])
+  name        String
+  amount      Float?
+  unit        String?
+  notes       String?
+  gramsEst    Float? // prior only — never a truth value
+  gramsSource GramsSource @default(none)
+  order       Int         @default(0)
+
+  @@index([dishId])
+}
+
+// Annotation trail from the Corpus screen (CORPUS.md §2): agreed → the meal
+// becomes `corrected`; excluded → out of distillation; editedJson holds the
+// fixed dish (name / ingredients / portionClass) when Fix was used.
+model CorpusAnnotation {
+  id           String        @id @default(uuid())
+  mealId       String
+  meal         CorpusMeal    @relation(fields: [mealId], references: [id])
+  dishId       String?
+  dish         CorpusDish?   @relation(fields: [dishId], references: [id])
+  portionClass PortionClass?
+  agreed       Boolean       @default(false)
+  excluded     Boolean       @default(false)
+  editedJson   Json?
+  at           DateTime      @default(now())
+
+  @@index([mealId])
+}
+
+// One distilled context version (CORPUS.md §3): dish cards + habit profile +
+// a snapshot of the dishware registry. corpusHash = sha256 over the meal /
+// tier / annotation state it was built from; config = thresholds, weights,
+// model pins and mode (mock | real).
+model ContextVersion {
+  id           String     @id @default(uuid())
+  label        String
+  createdAt    DateTime   @default(now())
+  corpusHash   String
+  cardCount    Int
+  habitProfile String?
+  config       Json
+  cards        DishCard[]
+  dishware     Dishware[]
+}
+
+// portionClassMix {small, usual, large} (weighted shares); ingredients
+// [{name, inclusionRate, medianGramsEst}]; features {homeShare (null when
+// unknown), slotMix {breakfast, lunch, dinner, snack}}; tierMix {corrected,
+// confirmed, unconfirmed} (instance counts).
+model DishCard {
+  id               String         @id @default(uuid())
+  contextVersionId String
+  contextVersion   ContextVersion @relation(fields: [contextVersionId], references: [id])
+  canonicalName    String
+  aliases          String[]
+  instanceCount    Int
+  lastSeen         DateTime       @db.Date
+  portionClassMix  Json
+  priorGrams       Float? // median of summed ingredient gramsEst per instance — model-estimated prior
+  ingredients      Json
+  features         Json
+  tierMix          Json
+
+  @@index([contextVersionId])
+}
+
+// Dishware registry (CORPUS.md §3), hand-entered. contextVersionId NULL = the
+// live registry; a distill run snapshots the live rows onto the new version.
+model Dishware {
+  id               String          @id @default(uuid())
+  contextVersionId String?
+  contextVersion   ContextVersion? @relation(fields: [contextVersionId], references: [id])
+  name             String
+  capacityMl       Float?
+  capacityG        Float?
+  usedFor          String?
+  photo            String?
+  createdAt        DateTime        @default(now())
+
+  @@index([contextVersionId])
+}

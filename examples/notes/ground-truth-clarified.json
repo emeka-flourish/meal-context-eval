@@ -1,0 +1,217 @@
+{
+  "_comment": "Synthetic example. One entry per photo scene (date + slot + photo number). hidden=true marks an item that cannot be seen in a photo of the served plate (under or inside other food, absorbed cooking fat, dissolved sweetener, seasoning).",
+  "scenes": [
+    {
+      "date": "2026-03-02",
+      "slot": "breakfast",
+      "photo": 1,
+      "items": [
+        {
+          "dish": "Granola bowl",
+          "name": "granola",
+          "grams": 45,
+          "basis": "weighed",
+          "tag": "core",
+          "state": null,
+          "note": null
+        },
+        {
+          "dish": "Granola bowl",
+          "name": "raspberry",
+          "grams": 55,
+          "basis": "weighed",
+          "tag": "secondary",
+          "state": "raw",
+          "note": null
+        },
+        {
+          "dish": "Granola bowl",
+          "name": "banana",
+          "grams": 60,
+          "basis": "weighed",
+          "tag": "secondary",
+          "state": "raw",
+          "note": null
+        },
+        {
+          "dish": "Granola bowl",
+          "name": "honey",
+          "grams": 7,
+          "basis": "estimated",
+          "tag": "secondary",
+          "state": null,
+          "note": "one tsp, drizzled and absorbed into the granola",
+          "hidden": true
+        }
+      ]
+    },
+    {
+      "date": "2026-03-02",
+      "slot": "dinner",
+      "photo": 1,
+      "items": [
+        {
+          "dish": "Chicken and rice",
+          "name": "chicken thigh",
+          "grams": 142,
+          "basis": "weighed",
+          "tag": "core",
+          "state": "cooked",
+          "note": null
+        },
+        {
+          "dish": "Chicken and rice",
+          "name": "white rice",
+          "grams": 180,
+          "basis": "weighed",
+          "tag": "core",
+          "state": "cooked",
+          "note": null
+        },
+        {
+          "dish": "Chicken and rice",
+          "name": "olive oil",
+          "grams": 8,
+          "basis": "weighed",
+          "tag": "garnish",
+          "state": null,
+          "note": "pan-frying oil, absorbed",
+          "hidden": true
+        },
+        {
+          "dish": "Chicken and rice",
+          "name": "paprika",
+          "grams": null,
+          "basis": null,
+          "tag": "spice",
+          "state": null,
+          "note": null,
+          "hidden": true
+        },
+        {
+          "dish": "Chicken and rice",
+          "name": "salt",
+          "grams": null,
+          "basis": null,
+          "tag": "ignore",
+          "state": null,
+          "note": null
+        },
+        {
+          "dish": "Side salad",
+          "name": "cucumber",
+          "grams": 60,
+          "basis": "weighed",
+          "tag": "core",
+          "state": "raw",
+          "note": null
+        },
+        {
+          "dish": "Side salad",
+          "name": "tomato",
+          "grams": 45,
+          "basis": "weighed",
+          "tag": "core",
+          "state": "raw",
+          "note": null
+        },
+        {
+          "dish": "Side salad",
+          "name": "olive oil",
+          "grams": 5,
+          "basis": "estimated",
+          "tag": "garnish",
+          "state": null,
+          "note": "one tsp dressing",
+          "hidden": true
+        }
+      ]
+    },
+    {
+      "date": "2026-03-02",
+      "slot": "dinner",
+      "photo": 2,
+      "items": [
+        {
+          "dish": "Second helping of rice",
+          "name": "white rice",
+          "grams": 95,
+          "basis": "weighed",
+          "tag": "core",
+          "state": "cooked",
+          "note": null
+        }
+      ]
+    },
+    {
+      "date": "2026-03-03",
+      "slot": "lunch",
+      "photo": 1,
+      "items": [
+        {
+          "dish": "Vegetable soup and bread",
+          "name": "vegetable soup",
+          "grams": 320,
+          "basis": "weighed",
+          "tag": "core",
+          "state": "cooked",
+          "note": "carrots, celery, onions, lentils"
+        },
+        {
+          "dish": "Vegetable soup and bread",
+          "name": "wheat bread",
+          "grams": 56,
+          "basis": "estimated",
+          "tag": "core",
+          "state": null,
+          "note": "two slices \u00d7 28 g"
+        },
+        {
+          "dish": "Vegetable soup and bread",
+          "name": "butter",
+          "grams": 5,
+          "basis": "estimated",
+          "tag": "garnish",
+          "state": null,
+          "note": "one tsp, melted into the bread",
+          "hidden": true
+        }
+      ]
+    },
+    {
+      "date": "2026-03-03",
+      "slot": "dinner",
+      "photo": 1,
+      "items": [
+        {
+          "dish": "Pasta",
+          "name": "pasta",
+          "grams": 210,
+          "basis": "weighed",
+          "tag": "core",
+          "state": "cooked",
+          "note": null
+        },
+        {
+          "dish": "Pasta",
+          "name": "stewed tomatoes",
+          "grams": 120,
+          "basis": "weighed",
+          "tag": "secondary",
+          "state": "cooked",
+          "note": null
+        },
+        {
+          "dish": "Pasta",
+          "name": "olive oil",
+          "grams": 5,
+          "basis": "estimated",
+          "tag": "garnish",
+          "state": null,
+          "note": "one tsp in the sauce",
+          "hidden": true
+        }
+      ]
+    }
+  ]
+}

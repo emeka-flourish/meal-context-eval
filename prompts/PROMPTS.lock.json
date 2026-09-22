@@ -1,0 +1,94 @@
+{
+  "lockedAt": "2026-09-21",
+  "entries": [
+    {
+      "stage": "router",
+      "when": "per scene",
+      "promptVersion": "router.v1",
+      "source": "src/runners/router.ts",
+      "sha256": "34e5669d4d3c50796740d8a9ed29d8a5c6f2580a51740c21a275807f7109ffae",
+      "model": "gpt-5.4-mini-2026-03-17",
+      "temperature": 0
+    },
+    {
+      "stage": "router (retrieval v2: picks from the person's dish names)",
+      "when": "per scene",
+      "promptVersion": "router.v2",
+      "source": "src/runners/router.ts",
+      "sha256": "356f8ad41be7e81eb3922f1e07f463be040db11b9f6510ab9ea4b2d0eab9091c",
+      "model": "gpt-5.4-mini-2026-03-17",
+      "temperature": 0
+    },
+    {
+      "stage": "interpret",
+      "when": "per cell",
+      "promptVersion": "interpret.v4",
+      "source": "prompts/interpret.v4.md",
+      "sha256": "f13ecd794f88750c1cae607dbcb05329d7dac2ba8cbad0e39b51767cfa85cf2a",
+      "blocks": {
+        "block1": "229c7ed4fc05d285f66cd64ebe3f8ddc8447dd839d1ab4ee5330b7063660b5e8",
+        "block2": "5daaca857aed53d0784561dcdca7186ffb68d031956cfb04a907a4e23a9f1af7",
+        "block3": "4bedd8a2831012f23adfbdbb0dd71ce52f2496007638959bcd76ee826f77480b",
+        "block4": "c58cb202ce2d1fee09c1236f4631611bf4224c36a56c3f8b6ce89a425ce29031",
+        "block5": "e7101175811d9de86583f46559821546dff1dc9598ffc604cfd6282749e75c1c",
+        "block6": "c5f37a054f117aaf48ce8c1fc658068d0a414f366cadfe9d4243a652daae3eca"
+      },
+      "model": "roster: gpt-5.5-2026-04-23, gpt-5.4-mini-2026-03-17, claude-opus-5, claude-haiku-4-5-20251001, gemini-3.8-flash, gemini-3.5-flash-lite",
+      "temperature": "provider default"
+    },
+    {
+      "stage": "matcher",
+      "when": "per cell",
+      "promptVersion": "match.v3",
+      "source": "prompts/match.v3.md",
+      "sha256": "553425c0585b1b4e9959dd0f0b4af130fc62850e31bae440219ea187c4ebe3b2",
+      "model": "gpt-5.1",
+      "temperature": 0
+    },
+    {
+      "stage": "classifier",
+      "when": "per cell",
+      "promptVersion": "classify.v1",
+      "source": "prompts/classify.v1.md",
+      "sha256": "009f29f8a14fd94851d2fed0cfc9d328b6a6a87713107e284b30c88bd73ff1b2",
+      "model": "gpt-5.1",
+      "temperature": 0
+    },
+    {
+      "stage": "nutrient estimate (fallback)",
+      "when": "on demand",
+      "promptVersion": "nutrient-estimate.v1",
+      "source": "prompts/nutrient-estimate.v1.md",
+      "sha256": "655ad2bd57bdb49fced0134c16422eb62e9c43e7fded7ac12281fc2fef2e80aa",
+      "model": "gpt-5.1",
+      "temperature": 0
+    },
+    {
+      "stage": "ground-truth structurer",
+      "when": "intake",
+      "promptVersion": "gt-structure.v1",
+      "source": "docs/TAG-GUIDE.md + src/runners/gtStructure.ts",
+      "sha256": "d00e6a58042bcc3c6ed901aa200d51334b372d437126be9562dc721dd37e6cb6",
+      "model": "gpt-5.1",
+      "temperature": "provider default"
+    },
+    {
+      "stage": "distill: same-dish check",
+      "when": "corpus build",
+      "promptVersion": "distill-confirm.v1",
+      "source": "src/runners/distill.ts",
+      "sha256": "6f58b49c88b1b2d126b2106d64d6473da4ab6e8f1aec5836f281e01be0e3b352",
+      "model": "gpt-5.1",
+      "temperature": 0
+    },
+    {
+      "stage": "distill: habit profile",
+      "when": "corpus build",
+      "promptVersion": "habit-profile.v1",
+      "source": "src/runners/distill.ts",
+      "sha256": "76b80a9390d07db259e147e79e2acfeccad8fac8391ce4c1353765863d997b88",
+      "model": "gpt-5.1",
+      "temperature": "provider default"
+    }
+  ]
+}

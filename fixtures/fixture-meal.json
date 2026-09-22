@@ -1,0 +1,144 @@
+{
+  "description": "Invented fixture meal (polenta + lentil stew) used by the seed script and the interpret mock.",
+  "pipeline_decomposition": {
+    "dishes": [
+      {
+        "dishName": "Soft Polenta",
+        "portion": {
+          "grams_est": 250,
+          "confidence": "medium"
+        },
+        "preparation": "boiled",
+        "ingredients": [
+          {
+            "name": "Cornmeal (Polenta)",
+            "grams_est": 70,
+            "preparation": "boiled"
+          },
+          {
+            "name": "Water",
+            "grams_est": 180,
+            "preparation": "boiled"
+          }
+        ]
+      },
+      {
+        "dishName": "Lentil Stew",
+        "portion": {
+          "grams_est": 300,
+          "confidence": "medium"
+        },
+        "preparation": "stewed",
+        "ingredients": [
+          {
+            "name": "Brown Lentils",
+            "grams_est": 120,
+            "preparation": "stewed"
+          },
+          {
+            "name": "Olive Oil",
+            "grams_est": 15,
+            "preparation": "cooked"
+          },
+          {
+            "name": "Tomato Base",
+            "grams_est": 60,
+            "preparation": "blended"
+          },
+          {
+            "name": "Leafy Greens (Spinach)",
+            "grams_est": 40,
+            "preparation": "chopped"
+          },
+          {
+            "name": "Carrot",
+            "grams_est": 50,
+            "preparation": "stewed"
+          }
+        ]
+      }
+    ],
+    "condiments_and_uncertain": [
+      {
+        "name": "stock cube",
+        "grams_est": 4,
+        "confidence": "low"
+      }
+    ]
+  },
+  "gt_decomposition": {
+    "dishes": [
+      {
+        "dishName": "Soft Polenta",
+        "portion": {
+          "grams": 240
+        },
+        "preparation": "boiled",
+        "ingredients": [
+          {
+            "name": "Cornmeal (Polenta)",
+            "grams": 65,
+            "grams_basis": "measured",
+            "preparation": "boiled"
+          },
+          {
+            "name": "Water",
+            "grams": 175,
+            "grams_basis": "estimated",
+            "preparation": "boiled"
+          }
+        ]
+      },
+      {
+        "dishName": "Lentil Stew",
+        "portion": {
+          "grams": 320
+        },
+        "preparation": "stewed",
+        "batch": {
+          "batch_total_grams": 1280,
+          "portion_fraction": 0.25
+        },
+        "ingredients": [
+          {
+            "name": "Brown Lentils",
+            "grams": 130,
+            "grams_basis": "measured",
+            "preparation": "stewed"
+          },
+          {
+            "name": "Olive Oil",
+            "grams": 18,
+            "grams_basis": "measured",
+            "preparation": "cooked"
+          },
+          {
+            "name": "Tomato Base",
+            "grams": 70,
+            "grams_basis": "measured",
+            "preparation": "blended"
+          },
+          {
+            "name": "Leafy Greens (Spinach)",
+            "grams": 45,
+            "grams_basis": "measured",
+            "preparation": "chopped"
+          },
+          {
+            "name": "Carrot",
+            "grams": 45,
+            "grams_basis": "measured",
+            "preparation": "stewed"
+          },
+          {
+            "name": "Onion and Seasoning",
+            "grams": 12,
+            "grams_basis": "estimated",
+            "preparation": "cooked"
+          }
+        ]
+      }
+    ],
+    "condiments_and_uncertain": []
+  }
+}

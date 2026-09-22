@@ -1,0 +1,254 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Vantage console — one light theme, taken from the approved mockups
+   (design/mockups/*.dc.html): paper #f6f5f2, ink #1a1a19, accent #1f5f5b,
+   IBM Plex Sans + Mono. shadcn tokens map onto that palette. */
+
+:root {
+  --radius: 0.5rem;
+
+  --paper: #f6f5f2;
+  --rail: #fbfaf8;
+  --ink: #1a1a19;
+  --ink-muted: #5b5a56;
+  --ink-faint: #8a8984;
+  --line: #e6e4df;
+  --line-soft: #f0efeb;
+  --line-strong: #d9d7d1;
+  --tint: #f0efeb;
+  --accent: #1f5f5b;
+  --accent-deep: #164643;
+  --accent-soft: #e9eeed;
+  --accent-tint: #bcd7d5;
+  --tile: #e9e7e1;
+  --tile-deep: #dcdad3;
+
+  --weighed-bg: #eef4f3;
+  --weighed-line: #cfe0de;
+  --weighed-ink: #1f5f5b;
+  --estimated-bg: #fbf3e6;
+  --estimated-line: #efdcc0;
+  --estimated-ink: #8a5a12;
+  --over-bg: #fbe4e4;
+  --over-ink: #9c2626;
+  --under-bg: #dfeafb;
+  --under-ink: #1c4f95;
+  --fail: #e34948;
+  /* stoplight reading aid (Results): bluish green / amber / vermilion — distinguishable with colour-blindness, always paired with a shape */
+  --light-good-bg: #e3f2ec;
+  --light-good-ink: #0f6a4b;
+  --light-watch-bg: #fdf0d2;
+  --light-watch-ink: #8a5a00;
+  --light-poor-bg: #fbe1da;
+  --light-poor-ink: #a8321a;
+  --cond-1: #2a78d6;
+  --cond-2: #eb6834;
+  --cond-3: #1baf7a;
+
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: #ffffff;
+  --card-foreground: var(--ink);
+  --popover: #ffffff;
+  --popover-foreground: var(--ink);
+  --primary: var(--accent);
+  --primary-foreground: #ffffff;
+  --secondary: var(--tint);
+  --secondary-foreground: var(--ink);
+  --muted: var(--tint);
+  --muted-foreground: var(--ink-muted);
+  --accent-foreground: var(--ink);
+  --destructive: var(--over-ink);
+  --border: var(--line);
+  --input: var(--line-strong);
+  --ring: var(--accent);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent-soft);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-paper: var(--paper);
+  --color-rail: var(--rail);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-line-strong: var(--line-strong);
+  --color-tint: var(--tint);
+  --color-brand: var(--accent);
+  --color-brand-deep: var(--accent-deep);
+  --color-brand-soft: var(--accent-soft);
+  --color-brand-tint: var(--accent-tint);
+  --color-tile: var(--tile);
+  --color-tile-deep: var(--tile-deep);
+  --color-weighed-bg: var(--weighed-bg);
+  --color-weighed-line: var(--weighed-line);
+  --color-weighed-ink: var(--weighed-ink);
+  --color-estimated-bg: var(--estimated-bg);
+  --color-estimated-line: var(--estimated-line);
+  --color-estimated-ink: var(--estimated-ink);
+  --color-over-bg: var(--over-bg);
+  --color-over-ink: var(--over-ink);
+  --color-under-bg: var(--under-bg);
+  --color-under-ink: var(--under-ink);
+  --color-fail: var(--fail);
+  --color-light-good-bg: var(--light-good-bg);
+  --color-light-good-ink: var(--light-good-ink);
+  --color-light-watch-bg: var(--light-watch-bg);
+  --color-light-watch-ink: var(--light-watch-ink);
+  --color-light-poor-bg: var(--light-poor-bg);
+  --color-light-poor-ink: var(--light-poor-ink);
+  --color-cond-1: var(--cond-1);
+  --color-cond-2: var(--cond-2);
+  --color-cond-3: var(--cond-3);
+
+  --font-sans: var(--font-plex-sans), "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-plex-mono), Menlo, Consolas, monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    color-scheme: light;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-size: 13px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  a {
+    color: var(--accent);
+  }
+  a:hover {
+    color: var(--accent-deep);
+  }
+  .mono,
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* Rounded chip from the mockups: `.chip` + `.chip-weighed` / `.chip-estimated` / `.chip-solid` */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.4;
+    border: 1px solid var(--line);
+    background: var(--rail);
+    color: var(--ink-muted);
+    white-space: nowrap;
+  }
+  .chip-sm {
+    padding: 0 6px;
+    font-size: 10px;
+  }
+  .chip-weighed {
+    color: var(--weighed-ink);
+    border-color: var(--weighed-line);
+    background: var(--weighed-bg);
+  }
+  .chip-estimated {
+    color: var(--estimated-ink);
+    border-color: var(--estimated-line);
+    background: var(--estimated-bg);
+  }
+  .chip-solid {
+    background: var(--accent-soft);
+    color: var(--ink);
+  }
+  .chip-over {
+    background: var(--over-bg);
+    color: var(--over-ink);
+    border-color: transparent;
+  }
+  .th-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .kbd {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 1px 5px;
+    border: 1px solid var(--line-strong);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    color: var(--ink-muted);
+    background: var(--rail);
+  }
+  .seg {
+    display: inline-flex;
+    border: 1px solid var(--line-strong);
+    border-radius: 6px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .seg > button {
+    padding: 4px 10px;
+    color: var(--ink-muted);
+    border-right: 1px solid var(--line);
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .seg > button:last-child {
+    border-right: 0;
+  }
+  .seg > button[data-on="true"] {
+    background: var(--tint);
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .cell {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    display: inline-block;
+  }
+  .cell-queued {
+    background: var(--line);
+  }
+  .cell-running {
+    background: var(--accent-tint);
+  }
+  .cell-done {
+    background: var(--accent);
+  }
+  .cell-failed {
+    background: var(--fail);
+  }
+}
